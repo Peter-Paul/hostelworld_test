@@ -77,7 +77,7 @@ export class RecordService {
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
-  async createRecord(request: CreateRecordRequestDTO): Promise<void> {
+  async createRecord(request: CreateRecordRequestDTO): Promise<boolean> {
     try {
       const response = await axios.get(
         `https://musicbrainz.org/ws/2/recording/?query=arid:${request.mbid}`,
@@ -90,7 +90,6 @@ export class RecordService {
       //   });
 
       const recordings: Recording[] | undefined = response.data.recordings;
-      console.log('Recordings: ', recordings);
 
       if (!recordings || recordings.length === 0) {
         await this.recordModel.create({
@@ -140,8 +139,10 @@ export class RecordService {
       console.log(
         `Successfully created ${trackList.length} records for mbid: ${request.mbid}`,
       );
+      return true;
     } catch (error) {
       console.error('Error adding record:', error);
+      return false;
     }
   }
 
@@ -247,5 +248,9 @@ export class RecordService {
       }
     }
     return recordFormat;
+  }
+
+  async getRecord(id: string): Promise<Record> {
+    return await this.recordModel.findById(id).exec();
   }
 }

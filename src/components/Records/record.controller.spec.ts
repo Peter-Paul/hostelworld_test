@@ -5,6 +5,8 @@ import { Record } from './schemas/record.schema';
 import { CreateRecordRequestDTO } from './dtos/create-record.request.dto';
 import { RecordCategory, RecordFormat } from './schemas/record.enum';
 import { RecordController } from './records.controller';
+import { RecordService } from './records.service';
+import { CacheModule } from '@nestjs/cache-manager';
 
 describe('RecordController', () => {
   let recordController: RecordController;
@@ -12,17 +14,26 @@ describe('RecordController', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
+      imports: [CacheModule.register()],
       controllers: [RecordController],
       providers: [
+        RecordService,
         {
           provide: getModelToken('Record'),
           useValue: {
             new: jest.fn().mockResolvedValue({}),
             constructor: jest.fn().mockResolvedValue({}),
-            find: jest.fn(),
+            find: jest.fn().mockReturnValue({
+              skip: jest.fn().mockReturnThis(),
+              limit: jest.fn().mockReturnThis(),
+              exec: jest.fn().mockResolvedValue([]), // Mock resolved data
+            }),
             findById: jest.fn(),
             save: jest.fn(),
             create: jest.fn(),
+            bulkWrite: jest.fn(),
+            updateOne: jest.fn(),
+            countDocuments: jest.fn(),
           },
         },
       ],
@@ -36,6 +47,8 @@ describe('RecordController', () => {
     const createRecordDto: CreateRecordRequestDTO = {
       artist: 'Test',
       album: 'Test Record',
+      trackId: '',
+      mbid: 'haha',
       price: 100,
       qty: 10,
       format: RecordFormat.VINYL,
@@ -47,12 +60,14 @@ describe('RecordController', () => {
       name: 'Test Record',
       price: 100,
       qty: 10,
+      trackId: '',
+      mbid: 'haha',
     };
 
     jest.spyOn(recordModel, 'create').mockResolvedValue(savedRecord as any);
 
     const result = await recordController.create(createRecordDto);
-    expect(result).toEqual(savedRecord);
+    expect(result).toEqual(true);
     expect(recordModel.create).toHaveBeenCalledWith({
       artist: 'Test',
       album: 'Test Record',
@@ -60,6 +75,8 @@ describe('RecordController', () => {
       qty: 10,
       category: RecordCategory.ALTERNATIVE,
       format: RecordFormat.VINYL,
+      trackId: '',
+      mbid: 'haha',
     });
   });
 
@@ -70,11 +87,13 @@ describe('RecordController', () => {
     ];
 
     jest.spyOn(recordModel, 'find').mockReturnValue({
+      skip: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
       exec: jest.fn().mockResolvedValue(records),
     } as any);
 
     const result = await recordController.findAll();
-    expect(result).toEqual(records);
+    expect(result.records).toEqual(records);
     expect(recordModel.find).toHaveBeenCalled();
   });
 });

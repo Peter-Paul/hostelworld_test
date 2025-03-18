@@ -17,8 +17,8 @@ export class RecordController {
   @ApiOperation({ summary: 'Create a new record' })
   @ApiResponse({ status: 201, description: 'Record successfully created' })
   @ApiResponse({ status: 400, description: 'Bad Request' })
-  async create(@Body() request: CreateRecordRequestDTO): Promise<void> {
-    await this.recordService.createRecord(request);
+  async create(@Body() request: CreateRecordRequestDTO): Promise<boolean> {
+    return await this.recordService.createRecord(request);
   }
 
   @Put(':id')

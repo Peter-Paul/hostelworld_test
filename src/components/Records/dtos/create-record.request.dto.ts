@@ -75,4 +75,12 @@ export class CreateRecordRequestDTO {
   })
   @IsOptional()
   mbid?: string;
+
+  @ApiProperty({
+    description: 'Track identifier',
+    type: String,
+    example: 'b10bbbfc-cf9e-42e0-be17-e2c3e1d2600d',
+  })
+  @IsOptional()
+  trackId?: string;
 }
