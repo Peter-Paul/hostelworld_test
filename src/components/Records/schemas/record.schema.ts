@@ -16,6 +16,9 @@ export class Record extends Document {
   @Prop({ required: true })
   qty: number;
 
+  @Prop({ required: false })
+  trackId: string;
+
   @Prop({ enum: RecordFormat, required: true })
   format: RecordFormat;
 

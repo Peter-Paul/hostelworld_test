@@ -4,6 +4,69 @@ import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
+import axios from 'axios';
+import { CreateRecordRequestDTO } from './dtos/create-record.request.dto';
+import { RecordFormat } from './schemas/record.enum';
+// import * as convert from 'xml-js';
+
+type Recording = {
+  id: string;
+  score: number;
+  title: string;
+  length: number;
+  video: string;
+  'artist-credit': [];
+  'first-release-date': string;
+  releases: Releases[];
+  tags: Tag[];
+};
+
+type Tag = {
+  count: number;
+  name: string;
+};
+
+type Releases = {
+  id: string;
+  'status-id': string;
+  count: number;
+  title: string;
+  status: string;
+  'artist-credit': ArtistCredit[];
+  'release-group': [];
+  date: string;
+  country: string;
+  'release-events': [];
+  'track-count': number;
+  media: Media[];
+};
+
+type ArtistCredit = {
+  name: 'The Beatles';
+  artist: any;
+};
+
+type Media = {
+  position: number;
+  format: string;
+  track: Track[];
+  'track-count': number;
+  'track-offset': number;
+};
+
+type Track = {
+  id?: string;
+  number?: string;
+  title?: string;
+  length?: number;
+  format?: string;
+  album?: string;
+  artist?: string;
+  price?: number;
+  qty?: number;
+  trackId?: string;
+  mbid?: string;
+};
 
 @Injectable()
 export class RecordService {
@@ -12,6 +75,74 @@ export class RecordService {
     @InjectModel('Record') private readonly recordModel: Model<Record>,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
+
+  async createRecord(request: CreateRecordRequestDTO): Promise<void> {
+    try {
+      const response = await axios.get(
+        `https://musicbrainz.org/ws/2/recording/?query=arid:${request.mbid}`,
+        { headers: { Accept: 'application/json' } },
+      );
+      // If you want to use XML instead of JSON, you can use the following code:
+      //   const jsonData = convert.xml2json(response.data, {
+      //     compact: true,
+      //     spaces: 4,
+      //   });
+
+      const recordings: Recording[] | undefined = response.data.recordings;
+      console.log('Recordings: ', recordings);
+
+      if (!recordings || recordings.length === 0) {
+        await this.recordModel.create({
+          artist: request.artist,
+          album: request.album,
+          price: request.price,
+          trackId: '',
+          qty: request.qty,
+          format: request.format,
+          category: request.category,
+          mbid: request.mbid,
+        });
+      }
+
+      const trackList: Track[] = recordings.flatMap((recording) =>
+        recording.releases.flatMap((release) =>
+          release.media.flatMap((media) =>
+            [...media.track].map((track) => {
+              return {
+                price: request.price,
+                qty: request.qty,
+                trackId: track.id,
+                album: release.title,
+                artist: release['artist-credit'][0].name,
+                format: this.getFormat(media.format ?? ''),
+                mbid: request.mbid,
+              };
+            }),
+          ),
+        ),
+      );
+
+      const bulkOps = trackList.map((track) => ({
+        updateOne: {
+          filter: {
+            artist: track.artist,
+            format: track.format,
+            album: track.album,
+          }, // Match by trackId
+          update: { $set: track }, // Update with new data
+          upsert: true, // Insert if not found
+        },
+      }));
+
+      await this.recordModel.bulkWrite(bulkOps);
+
+      console.log(
+        `Successfully created ${trackList.length} records for mbid: ${request.mbid}`,
+      );
+    } catch (error) {
+      console.error('Error adding record:', error);
+    }
+  }
 
   async getAllRecords(
     page: number,
@@ -84,5 +215,15 @@ export class RecordService {
       { records, total },
       duration,
     );
+  }
+
+  getFormat(format: string): RecordFormat {
+    let recordFormat: RecordFormat = RecordFormat.VINYL; // Default to Vinyl
+    for (const key in RecordFormat) {
+      if (format.toLowerCase().includes(key.toLowerCase())) {
+        recordFormat = RecordFormat[key];
+      }
+    }
+    return recordFormat;
   }
 }
