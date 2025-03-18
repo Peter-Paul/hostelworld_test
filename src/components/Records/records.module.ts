@@ -12,5 +12,6 @@ import { CacheModule } from '@nestjs/cache-manager';
   ],
   controllers: [RecordController],
   providers: [RecordService],
+  exports: [RecordService],
 })
 export class RecordModule {}

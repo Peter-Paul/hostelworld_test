@@ -1,16 +1,5 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Param,
-  Query,
-  Put,
-  InternalServerErrorException,
-} from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
+import { Controller, Get, Post, Body, Param, Query, Put } from '@nestjs/common';
 import { Record } from '../../components/Records/schemas/record.schema';
-import { Model } from 'mongoose';
 import { ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { CreateRecordRequestDTO } from '../../components/Records/dtos/create-record.request.dto';
 import {
@@ -22,10 +11,7 @@ import { RecordService } from './records.service';
 
 @Controller('records')
 export class RecordController {
-  constructor(
-    @InjectModel('Record') private readonly recordModel: Model<Record>,
-    private recordService: RecordService,
-  ) {}
+  constructor(private recordService: RecordService) {}
 
   @Post()
   @ApiOperation({ summary: 'Create a new record' })
@@ -42,20 +28,8 @@ export class RecordController {
   async update(
     @Param('id') id: string,
     @Body() updateRecordDto: UpdateRecordRequestDTO,
-  ): Promise<Record> {
-    const record = await this.recordModel.findById(id);
-    if (!record) {
-      throw new InternalServerErrorException('Record not found');
-    }
-
-    Object.assign(record, updateRecordDto);
-
-    const updated = await this.recordModel.updateOne(record);
-    if (!updated) {
-      throw new InternalServerErrorException('Failed to update record');
-    }
-
-    return record;
+  ): Promise<void> {
+    this.recordService.updateRecord(id, updateRecordDto);
   }
 
   @Get()

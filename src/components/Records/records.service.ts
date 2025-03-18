@@ -7,6 +7,7 @@ import { Cache } from 'cache-manager';
 import axios from 'axios';
 import { CreateRecordRequestDTO } from './dtos/create-record.request.dto';
 import { RecordFormat } from './schemas/record.enum';
+import { UpdateRecordRequestDTO } from './dtos/update-record.request.dto';
 // import * as convert from 'xml-js';
 
 type Recording = {
@@ -141,6 +142,27 @@ export class RecordService {
       );
     } catch (error) {
       console.error('Error adding record:', error);
+    }
+  }
+
+  async updateRecord(
+    id: string,
+    updateRecordDto: UpdateRecordRequestDTO,
+  ): Promise<void> {
+    try {
+      const result = await this.recordModel.updateOne(
+        { _id: id }, // Find by `_id`
+        { $set: updateRecordDto }, // Update fields
+      );
+
+      console.log(
+        'Matched:',
+        result.matchedCount,
+        'Updated:',
+        result.modifiedCount,
+      );
+    } catch (error) {
+      console.error('Error updating record:', error);
     }
   }
 
